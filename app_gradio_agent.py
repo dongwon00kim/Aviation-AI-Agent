@@ -237,7 +237,7 @@ def aviation_agent_with_memory(state: AviationGraphState, config: RunnableConfig
 - 항공편 관련 질문이면 search_flight_info 도구를 사용하세요
 - 항공 기술, 절차, 공항 정보 질문이면 search_aviation_documents 도구를 사용하세요
 - 한국어로 답변하고, 전문 용어는 이해하기 쉽게 설명하세요
-- 안전과 관련된 정보는 "시뮬레이션 및 학습 목적"임을 명시하세요
+- 유저가 "긴급상황 발생", "살려주세요", "조종사가 없어요",  "고장났어요" 등의 긴급상황 발생시 해당 항공편의 위치를 파악 후, 가까운 공항으로 안내하고, 해당 기종의 착륙절차 및 공항의 접근절차 활주로 정보 및  무전 정보 및 ATC 등의 정보를 알려주고 매번 다음 절차를 알려줄 수 있도록 도와주세요.
 
 {f'대화 요약: {summary}' if summary else ''}
 {context if context else ''}
@@ -395,10 +395,21 @@ class AviationAgentSystem:
         builder.add_edge("memory", END)
 
         # 그래프 컴파일
-        return builder.compile(
+        graph = builder.compile(
             checkpointer=InMemorySaver(),
             store=self.conversation_store
         )
+
+        # 그래프 이미지 저장
+        try:
+            graph_image = graph.get_graph().draw_mermaid_png()
+            with open("aviation_agent_workflow.png", "wb") as f:
+                f.write(graph_image)
+            logger.info("✅ Agent graph image saved as 'aviation_agent_workflow.png'")
+        except Exception as e:
+            logger.warning(f"⚠️ Could not save graph image: {str(e)}")
+
+        return graph
 
     def process_message(self, message: str, user_id: str = "default", thread_id: str = None) -> str:
         """메시지 처리"""
